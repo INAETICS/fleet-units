@@ -56,23 +56,53 @@ function start_inaetics(){
 
   #Start the unique Node Provisioning
   fleetctl start -no-block "$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  sleep 2
+  sleep 20
 
   #Start Felix agents (Felix before Celix because they have more conflicts)"
   for (( INDEX=1; INDEX<=$FELIX_AGENTS_NUMBER; INDEX++ ))
   do
     fleetctl start -no-block "$FELIX_UNIT_FILE_NAME_PREFIX$INDEX$UNIT_FILE_NAME_SUFFIX"
-    sleep 2
+    sleep 1
   done
 
   #Start Celix agents
   for (( INDEX=1; INDEX<=$CELIX_AGENTS_NUMBER; INDEX++ ))
   do
     fleetctl start -no-block "$CELIX_UNIT_FILE_NAME_PREFIX$INDEX$UNIT_FILE_NAME_SUFFIX"
-    sleep 2
+    sleep 1
   done
   
+  echo "Inaetics Environment started"
 
+  status_inaetics
+
+}
+
+function shutdown_nodes(){
+
+  for node in $(fleetctl list-machines -no-legend | awk '{print $2}')
+  do
+    ping -c 1 $node &>/dev/null
+    [ $? -eq 0 ] && ssh core@$node sudo poweroff
+  done
+
+}
+
+function reboot_nodes(){
+
+  for node in $(fleetctl list-machines -no-legend | awk '{print $2}')
+  do
+    ping -c 1 $node &>/dev/null
+    [ $? -eq 0 ] && ssh core@$node sudo reboot
+  done
+
+}
+
+function reset_nodes(){
+
+  stop_inaetics
+ 	 
+  reboot_nodes
 
 }
 
@@ -82,9 +112,9 @@ function status_inaetics(){
   fleetctl list-machines
   echo
 
-  echo "Submitted unit files:"
-  fleetctl list-unit-files
-  echo
+  #echo "Submitted unit files:"
+  #fleetctl list-unit-files
+  #echo
 
   echo "Deployed units:"
   fleetctl list-units
@@ -94,7 +124,8 @@ function status_inaetics(){
 
 function usage(){
 
-  echo "Usage: $0 <--status | --stop | --start [--celixAgents=X] [--felixAgents=Y] [--unitFilesPath=/path/to/unit/files/repo]>"
+  echo "Usage: $0 < --status | --stop | --reset | --reboot | --shutdown | --start [--celixAgents=X] [--felixAgents=Y] [--unitFilesPath=/path/to/unit/files/repo]>"
+ 
 
 }
 
@@ -111,6 +142,15 @@ for ITEM in $*; do
     ;;
     --stop)
       stop_inaetics
+    ;;
+    --reset)
+      reset_nodes
+    ;;
+    --reboot)
+      reboot_nodes
+    ;;
+    --shutdown)
+      shutdown_nodes
     ;;
     --start)
       READY_TO_START=1
