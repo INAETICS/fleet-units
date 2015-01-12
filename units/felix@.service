@@ -12,7 +12,8 @@ if [ "x$EXTERNAL_ETCD_STARTUP_PEERS" != "x" ]; then ETCD_SERVER=$EXTERNAL_ETCD_S
 MY_IP=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\'); \
 DOCKER_IP=$(ifconfig docker0 | grep inet | awk \'{print $2}\' | cut -d ":" -f2); \
 MY_ID=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\' | tr -d \'.\'); \
-/usr/bin/docker run --rm=true --hostname="felix_$MY_ID" --name="felix_$MY_ID" -p 6666:6666 -p 8080:8080 -p 9000:9000 -p 9001:9001 -it -e ETCDCTL_PEERS=$ETCD_SERVER:$ETCD_CLIENT_PORT -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/node-agent-service:latest /tmp/node-agent.sh felix_$MY_ID $MY_IP; ' 
+MY_INSTANCE=%i; \
+/usr/bin/docker run --rm=true --hostname="felix_$MY_INSTANCE" --name="felix_$MY_INSTANCE" -p 6666:6666 -p 8080:8080 -p 9000:9000 -p 9001:9001 -e ETCDCTL_PEERS=$ETCD_SERVER:$ETCD_CLIENT_PORT -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/node-agent-service:latest /tmp/node-agent.sh felix_$MY_INSTANCE $MY_IP; ' 
 
 ExecStop=/bin/sh -c 'for cont in $(docker ps | grep node-agent-service | awk \'{print $1}\'); do /usr/bin/docker stop $cont; /usr/bin/docker rm $cont; done'
 

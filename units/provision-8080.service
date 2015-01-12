@@ -12,7 +12,7 @@ if [ "x$EXTERNAL_ETCD_STARTUP_PEERS" != "x" ]; then ETCD_SERVER=$EXTERNAL_ETCD_S
 MY_IP=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\'); \
 DOCKER_IP=$(ifconfig docker0 | grep inet | awk \'{print $2}\' | cut -d ":" -f2); \
 MY_ID=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\' | tr -d \'.\'); \
-/usr/bin/docker run --rm=true --hostname="ACE_$MY_ID" --name="ACE_$MY_ID" -p 8080:8080 -it -e ETCDCTL_PEERS=$ETCD_SERVER:$ETCD_CLIENT_PORT -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/node-provisioning-service:latest /tmp/node-provisioning.sh node-provisioning-$MY_ID $MY_IP '
+/usr/bin/docker run --rm=true --hostname="ACE_$MY_ID" --name="ACE_$MY_ID" -p 8080:8080 -e ETCDCTL_PEERS=$ETCD_SERVER:$ETCD_CLIENT_PORT -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/node-provisioning-service:latest /tmp/node-provisioning.sh node-provisioning-$MY_ID $MY_IP '
 
 ExecStop=/bin/sh -c 'for cont in $(docker ps | grep node-provisioning-service | awk \'{print $1}\'); do /usr/bin/docker stop $cont; done'
 ExecStop=/bin/sh -c 'for cont in $(docker ps | grep node-provisioning-service | awk \'{print $1}\'); do /usr/bin/docker rm $cont; done'
