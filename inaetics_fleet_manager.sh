@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 UNIT_FILES_PATH="/home/inaetics/units"
 PROVISIONING_UNIT_FILE_NAME_PREFIX="provision-8080"
