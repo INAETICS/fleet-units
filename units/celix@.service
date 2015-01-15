@@ -5,7 +5,7 @@ Documentation=https://github.com/INAETICS
 [Service]
 EnvironmentFile=/usr/share/oem/node.config
 
-ExecStartPre=/bin/sh -c 'echo /usr/bin/docker pull $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-node-agent:latest'
+ExecStartPre=/bin/sh -c '/usr/bin/docker pull $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-node-agent:latest'
 
 ExecStart=/bin/sh -c '\
 if [ "x$EXTERNAL_ETCD_STARTUP_PEERS" != "x" ]; then ETCD_SERVER=$EXTERNAL_ETCD_STARTUP_PEERS ;  else ETCD_SERVER=$ETCD_STARTUP_PEERS; fi; \ 
