@@ -13,7 +13,7 @@ DOCKER_PORT=$${DOCKER_PORT:-$$DOCKER_REPOSITORY_PORT}; \
 DOCKER_IP=$(ifconfig docker0 | grep 'inet ' | awk '{print $2}' | cut -d ':' -f2); \
 MY_IP=$(ifconfig | grep \"$NODE_SUBNET\.[1-9]*\" | awk '{print $2}'); \
 MY_ID=felix_%i; \
-/usr/bin/docker run --rm=true --hostname=$MY_ID --name=$MY_ID -p 6666:6666 -p 8080:8080 -p 9000:9000 -p 9001:9001 -e ETCDCTL_PEERS=$ETCDCTL_PEERS -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/felix-agent:latest /tmp/node-agent.sh $MY_ID $MY_IP;" 
+/usr/bin/docker run --rm=true --hostname=$MY_ID --name=$MY_ID -p 6666:6666 -p 8080:8080 -p 9000:9000 -p 9001:9001 -p 22019:2019 -e ETCDCTL_PEERS=$ETCDCTL_PEERS -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/felix-agent:latest /tmp/node-agent.sh $MY_ID $MY_IP;"
 
 ExecStop=/bin/sh -c "for I in $(docker ps | grep felix_ | awk '{print $1}'); do /usr/bin/docker stop $$I; /usr/bin/docker rm $$I; done"
 
