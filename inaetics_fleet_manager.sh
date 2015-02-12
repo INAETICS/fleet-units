@@ -1,6 +1,6 @@
 #!/bin/bash
 
-UNIT_FILES_PATH="/home/inaetics/units"
+UNIT_FILES_PATH="./units"
 PROVISIONING_UNIT_FILE_NAME_PREFIX="provision-8080"
 CELIX_UNIT_FILE_NAME_PREFIX="celix@"
 FELIX_UNIT_FILE_NAME_PREFIX="felix@"
@@ -10,123 +10,84 @@ UNIT_FILE_NAME_SUFFIX=".service"
 CELIX_AGENTS_NUMBER=2
 FELIX_AGENTS_NUMBER=2
 
-function stop_inaetics(){
-  
-  #Stop Felix units
-  for fu in $(fleetctl list-units -no-legend | grep $FELIX_UNIT_FILE_NAME_PREFIX | awk '{print $1}')
-  do
-    fleetctl stop $fu
-    fleetctl unload $fu
-    fleetctl destroy $fu
-  done
-
-  fleetctl stop "$FELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl unload "$FELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl destroy "$FELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-
-  #Stop Celix units
-  for cu in $(fleetctl list-units -no-legend | grep $CELIX_UNIT_FILE_NAME_PREFIX | awk '{print $1}')
-  do
-    fleetctl stop $cu
-    fleetctl unload $cu
-    fleetctl destroy $cu
-  done
-
-  fleetctl stop "$CELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl unload "$CELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl destroy "$CELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-
-  #Stop Provisioning unit
-  
-  fleetctl stop    "$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl unload  "$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl destroy "$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-
+function stop_inaetics() {
+    # Stop Felix units
+    for fu in $(fleetctl list-units -no-legend | grep $FELIX_UNIT_FILE_NAME_PREFIX | awk '{print $1}'); do
+        fleetctl stop $fu && fleetctl unload $fu && fleetctl destroy $fu
+    done
+    # Stop Celix units
+    for cu in $(fleetctl list-units -no-legend | grep $CELIX_UNIT_FILE_NAME_PREFIX | awk '{print $1}'); do
+        fleetctl stop $cu && fleetctl unload $cu && fleetctl destroy $cu
+    done
+    # Stop Provisioning unit
+    for pu in $(fleetctl list-units -no-legend | grep provision | awk '{print $1}'); do
+        fleetctl stop $pu && fleetctl unload $pu && fleetctl destroy $pu 
+    done
 }
 
+function start_inaetics() { 
+    echo "Inaetics Environment starting with $CELIX_AGENTS_NUMBER Celix agents and $FELIX_AGENTS_NUMBER Felix agents"
 
-function start_inaetics(){
+    # Submit unit files
+    cd $UNIT_FILES_PATH
 
-	echo "Inaetics Environment starting with $CELIX_AGENTS_NUMBER Celix agents and $FELIX_AGENTS_NUMBER Felix agents"
+    # Start the unique Node Provisioning
+    fleetctl submit $PROVISIONING_UNIT_FILE_NAME_PREFIX && fleetctl start $PROVISIONING_UNIT_FILE_NAME_PREFIX
 
-  #Submit unit files
-  fleetctl submit "$UNIT_FILES_PATH/$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl submit "$UNIT_FILES_PATH/$CELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  fleetctl submit "$UNIT_FILES_PATH/$FELIX_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
+    # Start Felix agents (Felix before Celix because they have more conflicts)"
+    for (( INDEX=1; INDEX<=$FELIX_AGENTS_NUMBER; INDEX++ )); do
+        name="${FELIX_UNIT_FILE_NAME_PREFIX}${INDEX}"
+        fleetctl submit $name && fleetctl start $name
+    done
 
-  #Start the unique Node Provisioning
-  fleetctl start -no-block "$PROVISIONING_UNIT_FILE_NAME_PREFIX$UNIT_FILE_NAME_SUFFIX"
-  sleep 20
+    # Start Celix agents
+    for (( INDEX=1; INDEX<=$CELIX_AGENTS_NUMBER; INDEX++ )); do
+        name="${CELIX_UNIT_FILE_NAME_PREFIX}${INDEX}"
+        fleetctl submit $name && fleetctl start $name
+    done
 
-  #Start Felix agents (Felix before Celix because they have more conflicts)"
-  for (( INDEX=1; INDEX<=$FELIX_AGENTS_NUMBER; INDEX++ ))
-  do
-    fleetctl start -no-block "$FELIX_UNIT_FILE_NAME_PREFIX$INDEX$UNIT_FILE_NAME_SUFFIX"
-    sleep 1
-  done
+    # Restore working directory...
+    cd -
 
-  #Start Celix agents
-  for (( INDEX=1; INDEX<=$CELIX_AGENTS_NUMBER; INDEX++ ))
-  do
-    fleetctl start -no-block "$CELIX_UNIT_FILE_NAME_PREFIX$INDEX$UNIT_FILE_NAME_SUFFIX"
-    sleep 1
-  done
-  
-  echo "Inaetics Environment started"
-
-  status_inaetics
-
+    echo "Inaetics Environment started"
+    status_inaetics
 }
 
-function shutdown_nodes(){
-
-  for node in $(fleetctl list-machines -no-legend | awk '{print $2}')
-  do
-    ping -c 1 $node &>/dev/null
-    [ $? -eq 0 ] && ssh core@$node sudo poweroff
-  done
-
+function shutdown_nodes() {
+    for node in $(fleetctl list-machines -no-legend | awk '{print $2}'); do
+        ping -c 1 $node &>/dev/null
+        [ $? -eq 0 ] && ssh core@$node sudo poweroff
+    done
 }
 
-function reboot_nodes(){
-
-  for node in $(fleetctl list-machines -no-legend | awk '{print $2}')
-  do
-    ping -c 1 $node &>/dev/null
-    [ $? -eq 0 ] && ssh core@$node sudo reboot
-  done
-
+function reboot_nodes() {
+    for node in $(fleetctl list-machines -no-legend | awk '{print $2}'); do
+        ping -c 1 $node &>/dev/null
+        [ $? -eq 0 ] && ssh core@$node sudo reboot
+    done
 }
 
-function reset_nodes(){
-
-  stop_inaetics
- 	 
-  reboot_nodes
-
+function reset_nodes() {
+    stop_inaetics
+    reboot_nodes
 }
 
-function status_inaetics(){
-  
-  echo "Available machines:"
-  fleetctl list-machines
-  echo
+function status_inaetics() { 
+    echo "Available machines:"
+    fleetctl list-machines
+    echo
 
-  #echo "Submitted unit files:"
-  #fleetctl list-unit-files
-  #echo
+    #echo "Submitted unit files:"
+    #fleetctl list-unit-files
+    #echo
 
-  echo "Deployed units:"
-  fleetctl list-units
-  echo
-
+    echo "Deployed units:"
+    fleetctl list-units
+    echo
 }
 
-function usage(){
-
+function usage() {
   echo "Usage: $0 < --status | --stop | --reset | --reboot | --shutdown | --start [--celixAgents=X] [--felixAgents=Y] [--unitFilesPath=/path/to/unit/files/repo]>"
- 
-
 }
 
 #Main
@@ -173,3 +134,4 @@ done
 
 [ $READY_TO_START -eq 1 ] && start_inaetics
 
+###EOF###
