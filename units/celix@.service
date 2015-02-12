@@ -5,17 +5,17 @@ Documentation=https://github.com/INAETICS
 [Service]
 EnvironmentFile=/usr/share/oem/node.config
 
-ExecStartPre=/bin/sh -c '/usr/bin/docker pull $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-node-agent:latest'
+ExecStartPre=/bin/sh -c "/usr/bin/docker pull $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-agent:latest"
 
-ExecStart=/bin/sh -c '\
-if [ "x$EXTERNAL_ETCD_STARTUP_PEERS" != "x" ]; then ETCD_SERVER=$EXTERNAL_ETCD_STARTUP_PEERS ;  else ETCD_SERVER=$ETCD_STARTUP_PEERS; fi; \ 
-MY_IP=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\'); \
-MY_ID=$(ifconfig | grep "$NODE_SUBNET\.[1-9]*" | awk \'{print $2}\' | tr -d \'.\'); \
-MY_INSTANCE=%i; \
-DOCKER_IP=$(ifconfig docker0 | grep inet | awk \'{print $2}\' | cut -d ":" -f2); \
-/usr/bin/docker run --rm=true --hostname="celix_$MY_INSTANCE" --name="celix_$MY_INSTANCE" -p 6667:6666 -p 9999:9999 -p 8888:8888 -e ETCDCTL_PEERS=$ETCD_SERVER:$ETCD_CLIENT_PORT -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-node-agent:latest /tmp/start_agent.sh celix_$MY_INSTANCE $MY_IP; ' 
+ExecStart=/bin/sh -c "\
+ETCDCTL_PEERS=$${EXTERNAL_ETCD_STARTUP_PEERS:-$$ETCD_STARTUP_PEERS}; \
+DOCKER_PORT=$${DOCKER_PORT:-$$DOCKER_REPOSITORY_PORT}; \
+DOCKER_IP=$(ifconfig docker0 | grep 'inet ' | awk '{print $2}' | cut -d ':' -f2); \
+MY_IP=$(ifconfig | grep \"$NODE_SUBNET\.[1-9]*\" | awk '{print $2}'); \
+MY_ID=celix_%i; \
+/usr/bin/docker run --rm=true --hostname=$MY_ID --name=$MY_ID -p 6667:6666 -p 9999:9999 -p 8888:8888 -e ETCDCTL_PEERS=$ETCDCTL_PEERS -e DOCKER_HOST=tcp://$DOCKER_IP:$DOCKER_PORT $DOCKER_REPOSITORY_HOST:$DOCKER_REPOSITORY_PORT/inaetics/celix-agent:latest /tmp/node-agent.sh $MY_ID $MY_IP;" 
 
-ExecStop=/bin/sh -c 'for cont in $(docker ps | grep celix-node-agent | awk \'{print $1}\'); do /usr/bin/docker stop $cont; /usr/bin/docker rm $cont; done'
+ExecStop=/bin/sh -c "for I in $(docker ps | grep celix_ | awk '{print $1}'); do /usr/bin/docker stop $$I; /usr/bin/docker rm $$I; done"
 
 Restart=always
 RestartSec=10
@@ -23,5 +23,4 @@ RestartSec=10
 [X-Fleet]
 MachineMetadata=role=inaetics-agent
 X-Conflicts=celix@*.service
-#X-Conflicts=felix@*.service
 
